@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y \
     curl \
     gnupg \
     wireguard \
+    sudo \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Mullvad VPN using official repository
@@ -29,14 +30,8 @@ COPY . .
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
-# Create a script to start the VPN and then the application
-RUN echo '#!/bin/bash\n\
-mullvad account set ${MULLVAD_ACCOUNT}\n\
-mullvad connect\n\
-mullvad set location ro\n\
-sleep 5\n\
-gunicorn --bind 0.0.0.0:8080 --workers 1 --threads 2 --worker-class gthread --timeout 0 get_my_deck:app\n\
-' > /app/start.sh && chmod +x /app/start.sh
+# Make start script executable
+RUN chmod +x /app/start.sh
 
 # Run the start script
 CMD ["/app/start.sh"]
