@@ -22,7 +22,9 @@ client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 browser_options = Options()
 browser_options.add_argument("--headless")
-url = STEAM_DECK_URL
+browser_options.set_preference("intl.accept_languages", "en-US,en")
+# Add language parameter to URL if it doesn't already exist
+url = STEAM_DECK_URL if "?l=english" in STEAM_DECK_URL else f"{STEAM_DECK_URL}?l=english"
 
 def start():
     service = Service(GeckoDriverManager().install())
