@@ -20,4 +20,4 @@ ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
 # Run the script with gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "2", "get_my_deck:app"] 
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "--threads", "2", "--worker-class", "gthread", "--timeout", "0", "get_my_deck:app"] 

@@ -174,3 +174,9 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
     logger.info(f"Starting Flask app on port {port}")
     app.run(host='0.0.0.0', port=port)
+else:
+    # When running with Gunicorn, just start the monitoring thread
+    logger.info("Application starting up in production mode...")
+    monitor_thread = threading.Thread(target=monitor_steam_deck, daemon=True)
+    monitor_thread.start()
+    logger.info("Monitoring thread started in production mode")
