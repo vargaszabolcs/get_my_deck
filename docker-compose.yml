@@ -1,0 +1,16 @@
+services:
+  steam-deck-checker:
+    build: .
+    environment:
+      - TZ=Europe/Bucharest
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    tty: true
+    stdin_open: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3" 
