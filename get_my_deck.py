@@ -34,12 +34,20 @@ client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 # Create a queue for log messages
 log_queue = queue.Queue()
 
+# Create a list to store log messages (limited to last 1000 messages)
+log_messages = []
+MAX_LOGS = 1000
+
 # Custom logging handler to send logs to the queue
 class QueueHandler(logging.Handler):
     def emit(self, record):
         try:
             msg = self.format(record)
-            log_queue.put(msg)
+            log_messages.append(msg)
+            # Keep only the last MAX_LOGS messages
+            if len(log_messages) > MAX_LOGS:
+                log_messages.pop(0)
+            log_queue.put(json.dumps(log_messages))
         except Exception:
             self.handleError(record)
 
@@ -189,6 +197,11 @@ def home():
                     height: 400px;
                     overflow-y: auto;
                     white-space: pre-wrap;
+                    font-family: monospace;
+                }
+                .log-entry {
+                    margin: 2px 0;
+                    padding: 2px 0;
                 }
             </style>
         </head>
@@ -200,7 +213,18 @@ def home():
                 const evtSource = new EventSource('/stream');
                 
                 evtSource.onmessage = function(event) {
-                    logs.textContent = event.data;
+                    if (event.data) {
+                        try {
+                            const messages = JSON.parse(event.data);
+                            logs.innerHTML = messages.map(msg => 
+                                `<div class="log-entry">${msg}</div>`
+                            ).join('');
+                            // Scroll to bottom
+                            logs.scrollTop = logs.scrollHeight;
+                        } catch (e) {
+                            console.error("Error parsing log message:", e);
+                        }
+                    }
                 };
                 
                 evtSource.onerror = function(err) {
@@ -216,7 +240,7 @@ def stream():
     def generate():
         while True:
             try:
-                # Get the latest log message
+                # Get the latest log messages
                 msg = log_queue.get(timeout=30)
                 yield f"data: {msg}\n\n"
             except queue.Empty:
