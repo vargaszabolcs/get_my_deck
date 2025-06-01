@@ -9,7 +9,7 @@ from twilio.rest import Client
 from webdriver_manager.firefox import GeckoDriverManager
 from datetime import datetime
 import threading
-from flask import Flask, jsonify
+from flask import Flask, jsonify, Response
 import os
 import logging
 from config import (
@@ -21,6 +21,8 @@ from config import (
     STEAM_DECK_VERSIONS,
     CHECK_INTERVAL_SECONDS
 )
+import queue
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -28,6 +30,23 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+# Create a queue for log messages
+log_queue = queue.Queue()
+
+# Custom logging handler to send logs to the queue
+class QueueHandler(logging.Handler):
+    def emit(self, record):
+        try:
+            msg = self.format(record)
+            log_queue.put(msg)
+        except Exception:
+            self.handleError(record)
+
+# Add the queue handler to the logger
+queue_handler = QueueHandler()
+queue_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+logger.addHandler(queue_handler)
 
 browser_options = Options()
 browser_options.add_argument("--headless")
@@ -157,7 +176,54 @@ def monitor_steam_deck():
 
 @app.route('/')
 def home():
-    return jsonify({"status": "Steam Deck Stock Checker is running"})
+    return '''
+    <html>
+        <head>
+            <title>Steam Deck Stock Checker</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                #logs { 
+                    background-color: #f5f5f5; 
+                    padding: 10px; 
+                    border-radius: 5px;
+                    height: 400px;
+                    overflow-y: auto;
+                    white-space: pre-wrap;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Steam Deck Stock Checker</h1>
+            <div id="logs">Waiting for logs...</div>
+            <script>
+                const logs = document.getElementById('logs');
+                const evtSource = new EventSource('/stream');
+                
+                evtSource.onmessage = function(event) {
+                    logs.textContent = event.data;
+                };
+                
+                evtSource.onerror = function(err) {
+                    console.error("EventSource failed:", err);
+                };
+            </script>
+        </body>
+    </html>
+    '''
+
+@app.route('/stream')
+def stream():
+    def generate():
+        while True:
+            try:
+                # Get the latest log message
+                msg = log_queue.get(timeout=30)
+                yield f"data: {msg}\n\n"
+            except queue.Empty:
+                # Send a heartbeat to keep the connection alive
+                yield "data: \n\n"
+    
+    return Response(generate(), mimetype='text/event-stream')
 
 @app.route('/health')
 def health():
