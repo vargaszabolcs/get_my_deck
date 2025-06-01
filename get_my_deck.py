@@ -61,6 +61,13 @@ browser_options.add_argument("--headless")
 browser_options.add_argument("--no-sandbox")
 browser_options.add_argument("--disable-dev-shm-usage")
 browser_options.set_preference("intl.accept_languages", "en-US,en")
+# Set geolocation to Bucharest, Romania
+browser_options.set_preference("geo.wifi.uri", "data:application/json,{\"location\": {\"lat\": 44.4268, \"lng\": 26.1025}, \"accuracy\": 100.0}")
+browser_options.set_preference("geo.enabled", True)
+browser_options.set_preference("geo.provider.use_corelocation", False)
+browser_options.set_preference("geo.provider.use_gps", False)
+browser_options.set_preference("geo.provider.use_geoclue", False)
+browser_options.set_preference("geo.provider.use_geolocation", True)
 # Add language parameter to URL if it doesn't already exist
 url = STEAM_DECK_URL if "?l=english" in STEAM_DECK_URL else f"{STEAM_DECK_URL}?l=english"
 
@@ -189,24 +196,74 @@ def home():
         <head>
             <title>Steam Deck Stock Checker</title>
             <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
+                body { 
+                    font-family: 'Segoe UI', Arial, sans-serif; 
+                    margin: 0;
+                    padding: 20px;
+                    background-color: #1a1a1a;
+                    color: #e0e0e0;
+                }
+                h1 {
+                    color: #00adee;
+                    margin-bottom: 20px;
+                    font-size: 24px;
+                }
                 #logs { 
-                    background-color: #f5f5f5; 
-                    padding: 10px; 
-                    border-radius: 5px;
-                    height: 400px;
+                    background-color: #2d2d2d; 
+                    padding: 15px; 
+                    border-radius: 8px;
+                    height: 500px;
                     overflow-y: auto;
                     white-space: pre-wrap;
-                    font-family: monospace;
+                    font-family: 'Consolas', 'Monaco', monospace;
+                    font-size: 14px;
+                    line-height: 1.5;
+                    border: 1px solid #3d3d3d;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 }
                 .log-entry {
-                    margin: 2px 0;
-                    padding: 2px 0;
+                    margin: 4px 0;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    transition: background-color 0.2s;
+                }
+                .log-entry:hover {
+                    background-color: #3d3d3d;
+                }
+                /* Custom scrollbar */
+                #logs::-webkit-scrollbar {
+                    width: 10px;
+                }
+                #logs::-webkit-scrollbar-track {
+                    background: #2d2d2d;
+                    border-radius: 4px;
+                }
+                #logs::-webkit-scrollbar-thumb {
+                    background: #4d4d4d;
+                    border-radius: 4px;
+                }
+                #logs::-webkit-scrollbar-thumb:hover {
+                    background: #5d5d5d;
+                }
+                /* Status indicator */
+                .status {
+                    display: inline-block;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 50%;
+                    margin-right: 8px;
+                    background-color: #00ff00;
+                    animation: pulse 2s infinite;
+                }
+                @keyframes pulse {
+                    0% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                    100% { opacity: 1; }
                 }
             </style>
         </head>
         <body>
-            <h1>Steam Deck Stock Checker</h1>
+            <h1><span class="status"></span>Steam Deck Stock Checker</h1>
             <div id="logs">Waiting for logs...</div>
             <script>
                 const logs = document.getElementById('logs');
@@ -229,6 +286,7 @@ def home():
                 
                 evtSource.onerror = function(err) {
                     console.error("EventSource failed:", err);
+                    document.querySelector('.status').style.backgroundColor = '#ff0000';
                 };
             </script>
         </body>
