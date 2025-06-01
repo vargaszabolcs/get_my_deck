@@ -8,6 +8,9 @@ import time
 from twilio.rest import Client
 from webdriver_manager.firefox import GeckoDriverManager
 from datetime import datetime
+import threading
+from flask import Flask, jsonify
+import os
 from config import (
     TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN,
@@ -18,6 +21,7 @@ from config import (
     CHECK_INTERVAL_SECONDS
 )
 
+app = Flask(__name__)
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 browser_options = Options()
@@ -96,11 +100,11 @@ def runner(driver):
         return 0
 
 
-def get_my_deck():
+def monitor_steam_deck():
     c = 0
     driver = start()
     print("Starting driver...")
-    time.sleep(10) ## DO NOT EDIT
+    time.sleep(10)  # DO NOT EDIT
     print("Starting scraper...")
     while True:
         try:
@@ -114,14 +118,31 @@ def get_my_deck():
             else:
                 print("Rebooting")
                 quit(driver)
-                time.sleep(20) ## DO NOT EDIT
+                time.sleep(20)  # DO NOT EDIT
                 c = 0
                 driver = start()
         except Exception as e:
             print(f"Main loop error: {str(e)}")
             driver.quit()
-            time.sleep(20) ## DO NOT EDIT
-            get_my_deck()
+            time.sleep(20)  # DO NOT EDIT
+            monitor_steam_deck()
 
 
-get_my_deck()
+@app.route('/')
+def home():
+    return jsonify({"status": "Steam Deck Stock Checker is running"})
+
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy"}), 200
+
+
+if __name__ == '__main__':
+    # Start the monitoring thread
+    monitor_thread = threading.Thread(target=monitor_steam_deck, daemon=True)
+    monitor_thread.start()
+    
+    # Start the Flask app
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port)
