@@ -118,6 +118,7 @@ def runner(driver):
         return 0
 
 def monitor_steam_deck():
+    logger.info("monitor_steam_deck function started")
     c = 0
     driver = None
     try:
@@ -128,14 +129,17 @@ def monitor_steam_deck():
         while True:
             try:
                 if c < 11:
+                    logger.info(f"Starting check iteration {c+1}")
                     status = runner(driver)
                     if status == 1:
+                        logger.info("Found available Steam Deck!")
                         break
+                    logger.info(f"Check iteration {c+1} completed. Waiting {CHECK_INTERVAL_SECONDS} seconds before next check.")
                     time.sleep(CHECK_INTERVAL_SECONDS)  # Using config value for check interval
                     c = c + 1
                     refresh(driver)
                 else:
-                    logger.info("Rebooting")
+                    logger.info("Rebooting after 11 iterations")
                     quit(driver)
                     time.sleep(20)  # DO NOT EDIT
                     c = 0
@@ -160,10 +164,13 @@ def health():
     return jsonify({"status": "healthy"}), 200
 
 if __name__ == '__main__':
+    logger.info("Application starting up...")
     # Start the monitoring thread
     monitor_thread = threading.Thread(target=monitor_steam_deck, daemon=True)
     monitor_thread.start()
+    logger.info("Monitoring thread started")
     
     # Start the Flask app
     port = int(os.environ.get('PORT', 8080))
+    logger.info(f"Starting Flask app on port {port}")
     app.run(host='0.0.0.0', port=port)
