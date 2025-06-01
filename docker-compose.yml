@@ -4,6 +4,7 @@ services:
     environment:
       - TZ=Europe/Bucharest
       - PYTHONUNBUFFERED=1
+      - MULLVAD_ACCOUNT=${MULLVAD_ACCOUNT}
     volumes:
       - .:/app
     restart: unless-stopped
