@@ -73,7 +73,7 @@ url = STEAM_DECK_URL if "?l=english" in STEAM_DECK_URL else f"{STEAM_DECK_URL}?l
 
 def start():
     try:
-        service = Service(GeckoDriverManager().install())
+        service = Service('/usr/local/bin/geckodriver')
         driver = webdriver.Firefox(service=service, options=browser_options)
         driver.get(url)
         logger.info("Browser started successfully")

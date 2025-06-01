@@ -1,10 +1,31 @@
 services:
+  gluetun:
+    image: qmcgaw/gluetun
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - ./gluetun:/gluetun
+    environment:
+      - VPN_SERVICE_PROVIDER=mullvad
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - WIREGUARD_PUBLIC_KEY=${WIREGUARD_PUBLIC_KEY}
+      - WIREGUARD_ENDPOINT_IP=${WIREGUARD_ENDPOINT}
+      - WIREGUARD_ENDPOINT_PORT=${WIREGUARD_ENDPOINT_PORT}
+      - SERVER_CITIES=${SERVER_CITIES}
+      - TZ=Europe/Bucharest
+    restart: unless-stopped
+
   steam-deck-checker:
     build: .
     environment:
       - TZ=Europe/Bucharest
       - PYTHONUNBUFFERED=1
-      - MULLVAD_ACCOUNT=${MULLVAD_ACCOUNT}
+    network_mode: "service:gluetun"
     volumes:
       - .:/app
     restart: unless-stopped

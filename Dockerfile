@@ -1,37 +1,45 @@
 FROM python:3.9-slim
 
-# Install system dependencies and Firefox
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
+    # Firefox and its dependencies
     firefox-esr \
-    curl \
-    gnupg \
-    wireguard \
-    sudo \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Mullvad VPN using official repository
-RUN curl -fsSLo /usr/share/keyrings/mullvad-keyring.asc https://repository.mullvad.net/deb/mullvad-keyring.asc \
-    && echo "deb [signed-by=/usr/share/keyrings/mullvad-keyring.asc arch=$( dpkg --print-architecture )] https://repository.mullvad.net/deb/stable stable main" > /etc/apt/sources.list.d/mullvad.list \
-    && apt-get update \
-    && apt-get install -y mullvad-vpn \
+    # Required for Firefox and Selenium
+    xvfb \
+    libx11-xcb1 \
+    libdbus-glib-1-2 \
+    libgtk-3-0 \
+    libasound2 \
+    # Required for downloading GeckoDriver
+    wget \
+    # Clean up
     && rm -rf /var/lib/apt/lists/*
 
 # Set up working directory
 WORKDIR /app
 
-# Copy requirements first to leverage Docker cache
+# Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Install GeckoDriver
+RUN wget -q https://github.com/mozilla/geckodriver/releases/download/v0.33.0/geckodriver-v0.33.0-linux64.tar.gz \
+    && tar -xzf geckodriver-v0.33.0-linux64.tar.gz \
+    && chmod +x geckodriver \
+    && mv geckodriver /usr/local/bin/ \
+    && rm geckodriver-v0.33.0-linux64.tar.gz
+
+# Copy application code
 COPY . .
 
 # Set environment variables
-ENV PORT=8080
-ENV PYTHONUNBUFFERED=1
+ENV PORT=8080 \
+    PYTHONUNBUFFERED=1 \
+    DISPLAY=:99 \
+    PATH="/usr/local/bin:${PATH}"
 
 # Make start script executable
 RUN chmod +x /app/start.sh
 
-# Run the start script
+# Run the application
 CMD ["/app/start.sh"]
