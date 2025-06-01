@@ -11,6 +11,7 @@ from datetime import datetime
 import threading
 from flask import Flask, jsonify
 import os
+import logging
 from config import (
     TWILIO_ACCOUNT_SID,
     TWILIO_AUTH_TOKEN,
@@ -21,31 +22,48 @@ from config import (
     CHECK_INTERVAL_SECONDS
 )
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 app = Flask(__name__)
 client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
 browser_options = Options()
 browser_options.add_argument("--headless")
+browser_options.add_argument("--no-sandbox")
+browser_options.add_argument("--disable-dev-shm-usage")
 browser_options.set_preference("intl.accept_languages", "en-US,en")
 # Add language parameter to URL if it doesn't already exist
 url = STEAM_DECK_URL if "?l=english" in STEAM_DECK_URL else f"{STEAM_DECK_URL}?l=english"
 
 def start():
-    service = Service(GeckoDriverManager().install())
-    driver = webdriver.Firefox(service=service, options=browser_options)
-    driver.get(url)
-    return driver
-
+    try:
+        service = Service(GeckoDriverManager().install())
+        driver = webdriver.Firefox(service=service, options=browser_options)
+        driver.get(url)
+        logger.info("Browser started successfully")
+        return driver
+    except Exception as e:
+        logger.error(f"Failed to start browser: {str(e)}")
+        raise
 
 def refresh(driver):
-    driver.refresh()
-    # Wait for the page to load after refresh
-    time.sleep(5)
-
+    try:
+        driver.refresh()
+        # Wait for the page to load after refresh
+        time.sleep(5)
+        logger.info("Page refreshed successfully")
+    except Exception as e:
+        logger.error(f"Failed to refresh page: {str(e)}")
+        raise
 
 def quit(driver):
-    driver.quit()
-
+    try:
+        driver.quit()
+        logger.info("Browser closed successfully")
+    except Exception as e:
+        logger.error(f"Failed to close browser: {str(e)}")
 
 def runner(driver):
     try:
@@ -60,7 +78,7 @@ def runner(driver):
         import json
         config = json.loads(config_data)
         country = config.get("COUNTRY", "Unknown")
-        print(f"Current country: {country}")
+        logger.info(f"Current country: {country}")
         
         available_versions = []
         
@@ -71,12 +89,12 @@ def runner(driver):
                     EC.presence_of_element_located((By.XPATH, version["xpath"]))
                 )
                 x = stock_element.text.strip()
-                print(f"Found text for {version['name']}: {x}")
+                logger.info(f"Found text for {version['name']}: {x}")
                 
                 if "Out of stock" not in x:
                     available_versions.append(version["name"])
             except Exception as e:
-                print(f"Error checking {version['name']}: {str(e)}")
+                logger.error(f"Error checking {version['name']}: {str(e)}")
                 continue
         
         if available_versions:
@@ -87,56 +105,59 @@ def runner(driver):
                 from_=TWILIO_PHONE_NUMBER,
                 body=message
             )
-            print(message)
+            logger.info(message)
             status = 1
         else:
-            print("All versions are out of stock")
-            print("Time checked:", datetime.now())
+            logger.info("All versions are out of stock")
+            logger.info(f"Time checked: {datetime.now()}")
             status = 0
             
         return status
     except Exception as e:
-        print(f"Error occurred: {str(e)}")
+        logger.error(f"Error occurred in runner: {str(e)}")
         return 0
-
 
 def monitor_steam_deck():
     c = 0
-    driver = start()
-    print("Starting driver...")
-    time.sleep(10)  # DO NOT EDIT
-    print("Starting scraper...")
-    while True:
-        try:
-            if c < 11:
-                status = runner(driver)
-                if status == 1:
-                    break
-                time.sleep(CHECK_INTERVAL_SECONDS)  # Using config value for check interval
-                c = c + 1
-                refresh(driver)
-            else:
-                print("Rebooting")
-                quit(driver)
+    driver = None
+    try:
+        driver = start()
+        logger.info("Starting driver...")
+        time.sleep(10)  # DO NOT EDIT
+        logger.info("Starting scraper...")
+        while True:
+            try:
+                if c < 11:
+                    status = runner(driver)
+                    if status == 1:
+                        break
+                    time.sleep(CHECK_INTERVAL_SECONDS)  # Using config value for check interval
+                    c = c + 1
+                    refresh(driver)
+                else:
+                    logger.info("Rebooting")
+                    quit(driver)
+                    time.sleep(20)  # DO NOT EDIT
+                    c = 0
+                    driver = start()
+            except Exception as e:
+                logger.error(f"Main loop error: {str(e)}")
+                if driver:
+                    quit(driver)
                 time.sleep(20)  # DO NOT EDIT
-                c = 0
-                driver = start()
-        except Exception as e:
-            print(f"Main loop error: {str(e)}")
-            driver.quit()
-            time.sleep(20)  # DO NOT EDIT
-            monitor_steam_deck()
-
+                monitor_steam_deck()
+    except Exception as e:
+        logger.error(f"Fatal error in monitor_steam_deck: {str(e)}")
+        if driver:
+            quit(driver)
 
 @app.route('/')
 def home():
     return jsonify({"status": "Steam Deck Stock Checker is running"})
 
-
 @app.route('/health')
 def health():
     return jsonify({"status": "healthy"}), 200
-
 
 if __name__ == '__main__':
     # Start the monitoring thread
