@@ -1,6 +1,7 @@
 # Steam Deck Stock Checker
 
 A Python script that monitors the availability of Steam Deck devices on the Steam store and sends notifications when they become available.
+Perfect for running on a cloud service like GCP or AWS.
 
 ## Features
 
@@ -9,7 +10,7 @@ A Python script that monitors the availability of Steam Deck devices on the Stea
 - Configurable monitoring of specific versions
 - SMS notifications via Twilio when stock becomes available
 - Automatic retry mechanism with error handling
-- Country-specific availability checking
+- Country-specific availability checking using VPN
 
 ## Supported Steam Deck Versions
 
@@ -22,32 +23,31 @@ The script can monitor the following Steam Deck versions:
 
 ## Setup
 
-### Option 1: Local Setup
+### Prerequisites:
+1. Create a free Twilio account. <small>(if you want SMS notification)</small>
 
-1. Install the required Python packages:
+### Option 1: Local Setup (no Docker)
+
+1. Make sure you have Python 3. Most systems have it out of the box. Check with `python --version`. You will also need Firefox or Chrome installed. See below for switching.
+2. Install the required Python packages:
 ```bash
 pip install -r requirements.txt
 ```
 
-2. Configure your Twilio credentials and phone numbers in `config.py`:
-```python
-TWILIO_ACCOUNT_SID = "your_account_sid"
-TWILIO_AUTH_TOKEN = "your_auth_token"
-TWILIO_PHONE_NUMBER = "your_twilio_number"
-RECIPIENT_PHONE_NUMBER = "your_phone_number"
-```
+3. Create a Twilio free account.
+4. Create a `.env` file with your credentials (copy from `.env.example`)
+5. Configure your Steam Deck versions in `config.py`
+6. Run by typing in the terminal: `python .\get_my_deck.py`
 
 ### Option 2: Docker Setup (Recommended)
 
 1. Install Docker and Docker Compose on your system
 2. Create a `.env` file with your credentials (copy from `.env.example`)
-3. Build and run the container:
+3. Configure your Steam Deck versions in `config.py`
+4. Build and run the container: <small>(note: in some cases the command might be `docker compose` instead of `docker-compose`, depends on system and how docker was installed)</small>
 ```bash
-# Build the container
-docker-compose build
-
-# Start the container
-docker-compose up -d
+# Build & start the container
+docker-compose up -d --build
 
 # View logs in real-time
 docker-compose logs -f
@@ -78,7 +78,7 @@ RECIPIENT_PHONE_NUMBER = "your_phone_number"
 STEAM_DECK_URL = "https://store.steampowered.com/sale/steamdeckrefurbished"
 ```
 
-### 2. Recommended (Secure): Use a `.env` File
+### 2. Recommended (Secure & good practice): Use a `.env` File
 
 1. Create a file named `.env` in your project root with the following structure:
    ```env
@@ -111,6 +111,8 @@ STEAM_DECK_VERSIONS = [
 
 The script can use either Chrome or Firefox as the web driver. By default, it is configured to use Firefox. To switch between them:
 
+> **NOTE:** On the `deploy` branch this is not applicable. Firefox is integrated at a deeper level, installed by the docker setup. Switch at your own discretion. 
+
 ### For Chrome:
 1. Install Chrome browser if you haven't already
 2. Modify `get_my_deck.py` to use Chrome imports and driver:
@@ -137,32 +139,6 @@ service = Service(GeckoDriverManager().install())
 driver = webdriver.Firefox(service=service, options=browser_options)
 ```
 
-## Running the Script
-
-### Local Run:
-```bash
-python get_my_deck.py
-```
-
-The script will:
-1. Start monitoring the configured Steam Deck versions
-2. Check availability every 20 seconds
-3. Send an SMS notification when any monitored version becomes available
-4. Automatically retry if any errors occur
-5. Reboot the browser session every 11 checks to prevent memory issues
-
-### Docker Run (recommended):
-```bash
-# Start the container
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop the container
-docker-compose down
-```
-
 ## Customization
 
 ### Notification Settings
@@ -177,10 +153,12 @@ The script includes robust error handling:
 - Provides detailed error messages in the console
 - Continues monitoring even if one version check fails
 
-## Requirements
+### Deploying to Cloud Services
+This app is perfect to be deployed as a cloud service. For free options, I recommend Google Cloud Platform (GCP).
+This is not a tutorial on how to use a cloud service.
+Check out the `deploy` branch.
 
-- Python 3.x
-- Firefox or Chrome browser
-- GeckoDriver (for Firefox) or ChromeDriver (for Chrome)
-- Twilio account (for SMS notifications)
-- Required Python packages (see requirements.txt)
+## Features reserved for deployed version:
+1. VPN Support trough any provider that offers Wireguard config. (`Mullvad`, NordVPN, ProtonVPN etc...) SD stocks very by country/region, if you need to set that, you can use this. Check out `docker-compose.yml` to switch between providers if something is not working.
+2. Access real time logs anywhere trough 8080 port. Make sure to open that if you want this feature. For GCP:
+`gcloud compute --project=[PROJECT_ID] firewall-rules create rule-for-deck-checker --direction=INGRESS --priority=1000 --network=default --action=ALLOW --rules=tcp:8080 --source-ranges=0.0.0.0/0`
