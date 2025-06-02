@@ -24,7 +24,7 @@ The script can monitor the following Steam Deck versions:
 ## Setup
 
 ### Prerequisites:
-1. Create a free Twilio account. <small>(if you want SMS notification)</small>
+1. Create a free Twilio account. <small>(if you want SMS notification, see below for disabling this)</small>
 
 ### Option 1: Local Setup (no Docker)
 
@@ -33,8 +33,6 @@ The script can monitor the following Steam Deck versions:
 ```bash
 pip install -r requirements.txt
 ```
-
-3. Create a Twilio free account.
 4. Create a `.env` file with your credentials (copy from `.env.example`)
 5. Configure your Steam Deck versions in `config.py`
 6. Run by typing in the terminal: `python .\get_my_deck.py`
