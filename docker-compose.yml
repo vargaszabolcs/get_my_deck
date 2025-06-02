@@ -18,6 +18,8 @@ services:
       - WIREGUARD_ENDPOINT_PORT=${WIREGUARD_ENDPOINT_PORT}
       - SERVER_CITIES=${SERVER_CITIES}
       - TZ=Europe/Bucharest
+    ports:
+      - "8080:8080"
     restart: unless-stopped
 
   steam-deck-checker:
